@@ -1,5 +1,12 @@
 const net = require("net");
-const os = require("os");
+const fs = require('fs');
+
+const directory = process.argv[3];
+
+const sendFileResponse = (socket, file) => {
+  const httpResponse = `HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${file.length}\r\n\r\n${file}`;
+  socket.write(httpResponse);
+};
 
 const sendBasicGetResponse = (socket) => {
   const httpResponse = 'HTTP/1.1 200 OK\r\n\r\n';
@@ -23,11 +30,31 @@ const send404Response = (socket) => {
 
 const server = net.createServer((socket) => {
   socket.on('data', (data) => {
-    console.log(os.cpus().length);
     const request = data.toString();
 
     if (request.startsWith('GET / ')) {
       sendBasicGetResponse(socket);
+    } else if (request.startsWith('POST /files/')) {
+      const [_, requestedFile] = request.match(/\/files\/([^ ]+)/);
+      const filePath = `${directory}/${requestedFile}`;
+
+      const body = request.split('\r\n\r\n')[1];
+
+      const httpResponse = 'HTTP/1.1 201 OK\r\n\r\n';
+
+      fs.writeFileSync(filePath, body);
+
+      socket.write(httpResponse);
+    } else if (request.startsWith('GET /files/')) {
+      const [_, requestedFile] = request.match(/\/files\/([^ ]+)/);
+      const filePath = `${directory}/${requestedFile}`;
+
+      if (fs.existsSync(filePath)) {
+        const file = fs.readFileSync(filePath, 'utf8');
+        sendFileResponse(socket, file);
+      } else {
+        send404Response(socket);
+      }
     } else if (request.startsWith('GET /user-agent')) {
       const [_, userAgent] = request.match(/User-Agent:\s*(.+?)\s*$/m);
       sendUserAgentResponse(socket, userAgent);
