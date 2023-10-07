@@ -1,4 +1,5 @@
 const net = require("net");
+const os = require("os");
 
 const sendBasicGetResponse = (socket) => {
   const httpResponse = 'HTTP/1.1 200 OK\r\n\r\n';
@@ -22,6 +23,7 @@ const send404Response = (socket) => {
 
 const server = net.createServer((socket) => {
   socket.on('data', (data) => {
+    console.log(os.cpus().length);
     const request = data.toString();
 
     if (request.startsWith('GET / ')) {
